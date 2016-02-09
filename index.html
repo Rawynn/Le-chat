@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Le chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <!-- FOUNDATION -->
+    <script type="text/javascript" SRC="public/foundation/js/vendor/jquery.min.js"></script>
+    <script type="text/javascript" SRC="public/foundation/js/foundation.min.js"></script>
+    <link rel="stylesheet" href="public/foundation/css/foundation.min.css" type="text/css" />
+
+    <!-- custom-->
+    <link rel="stylesheet" href="public/css/main.css" type="text/css" />
+	<script src="node_modules/js-cookie/src/js.cookie.js"></script>
+	<script src="public/js/randomColor.js"></script>
+</head>
+<body>
+	<div id="nickWrap">
+      <div class="row custom-row ">
+        <div class="row chat-header">
+          <div class="large-12 columns"><h3 class="large-11 large-centered columns">Chat rekrutacyjny</h3></div>
+        </div>
+        <div class="row chat-subheader text-center">
+          <div class="large-12 columns"><h4>Wybierz login</h4></div>
+        </div>
+       <!-- <div class="row msgs">
+          <div class="large-11 large-centered columns">
+           
+            <div >
+              <ul id="messages"></ul>
+            </div>
+            
+          </div>
+        </div>-->
+        <div class="row form-row large-11 large-centered columns">
+        	<p id="nickError" class="error text-center"></p>
+          	
+          	
+
+            
+            <form id="setNick">
+            	<div class="row input-nick ">
+              <input name="name" class="large-11 large-centered columns" id="nickname" autocomplete="off" placeholder="Login" />
+              </div>
+                <div class="row log-button">
+                  <button class="large-11 large-centered columns button">Wejdź na czat</button>
+              </div>
+            </form>
+                 
+        </div>
+      </div>
+    </div>
+
+
+
+
+
+
+	<div id="contentWrap">
+		<!--<div id="chatWrap">
+			<div id="chat"></div>
+			<form id="send-message">
+				<input size="35" id="message"></input>
+				<input type="submit"></input>
+			</form>
+		</div>
+		<div id="users"></div>-->
+
+		<div class="row custom-row ">
+	      <div class="row chat-header">
+	        <div class="large-12 columns"><h3 class="large-11 large-centered columns">Chat rekrutacyjny</h3></div>
+	      </div>
+	      <div class="row chat-subheader text-center">
+	        <div class="large-12 columns"><h4>Jesteś zalogowany jako <strong id="nick"></strong>.</h4></div>
+	      </div>
+	      <div class="row msgs">
+	        <div class="large-11 large-centered columns">
+	         
+	          <div class="chat panel clearfix">
+	            <ul id="messages" >
+	            </ul>
+
+	          </div>
+	          
+	        </div>
+	      </div>
+	      <div class="row input-msg">
+	        
+	        <form id="send-message">
+	          <input class="large-11 large-centered columns inp" id="message" autocomplete="off" placeholder="Wpisz wiadomość..." /><!--<button class="large-2 columns">Send</button>-->
+	        </form>
+	      </div>
+	    </div>
+
+
+
+
+
+
+
+	</div>
+	
+	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<!--<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>-->
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+		jQuery(function($){
+			var socket = io.connect();
+			var $nickForm = $('#setNick');
+			var $nickError = $('#nickError');
+			var $nickBox = $('#nickname');
+			var $users = $('#users');
+			var $messageForm = $('#send-message');
+			var $messageBox = $('#message');
+			var $chat = $('#messages');
+			var $cont = $('.chat');
+			var $myNick = $('#nick');
+			var $nickVal = "";
+
+			$nickForm.submit(function(e){
+				e.preventDefault();
+				 $nickVal= $nickBox.val();
+				socket.emit('new user', $nickBox.val(), function(data){
+					if(data){
+						$myNick.append($nickVal);
+						$('#nickWrap').hide();
+						$('#contentWrap').show();
+
+						Cookies.set('name', $nickVal, { expires: 7 });
+
+					} else{
+						$nickError.html('Ten login jest już zajęty! Spróbuj ponownie.');
+					}
+				});
+				
+				$nickBox.val('');
+			});
+			
+			socket.on('usernames', function(data){
+				var html = '';
+				for(i=0; i < data.length; i++){
+					html += data[i] + '<br/>'
+				}
+				$users.html(html);
+			});
+			
+			$messageForm.submit(function(e){
+				e.preventDefault();
+				
+				socket.emit('send message', {wiad:$messageBox.val()}, function(data){
+					$chat.append('<span class="error">' + data + "</span><br/>");
+            		
+				});
+				$messageBox.val('');
+			});
+			
+			socket.on('new message', function(data){
+				var date = new Date();
+        		var today = 'dodano: '+('0' +date.getDate()).slice(-2)+'-'+('0'+date.getMonth()).slice(-2)+'-'+date.getFullYear()+' o '+('0'+date.getHours()).slice(-2)+':'+('0'+date.getMinutes()).slice(-2)+':'+('0'+date.getSeconds()).slice(-2);
+
+        		var cookie= Cookies.get('name');
+
+        		if(cookie === data.nick){
+        			
+					$('#messages').append($('<li><div class="msg-wrap"><div class="circle" style ="float:right; margin-right:0; margin-left:1rem; background:'+data.color+'">'+data.nick[0]+'</div><div class="msg-header"><div class="nickname" style="float:right; color:'+data.color+'">'+data.nick+' [ja]</div><div class="data" style="float:left;">'+today+'</div></div><div class="msg" style="float:right">'+data.msg+'</div></div></li>'));
+        		}
+        		else{
+
+        			$('#messages').append($('<li><div class="msg-wrap"><div class="circle" style ="background:'+data.color+'">'+data.nick[0]+'</div><div class="msg-header"><div class="nickname" style="color:'+data.color+'">'+data.nick+'</div><div class="data">'+today+'</div></div><div class="msg">'+data.msg+'</div></div></li>'));
+        		}
+
+				
+
+				$cont[0].scrollTop = $cont[0].scrollHeight;
+			});
+			
+			socket.on('whisper', function(data){
+				$chat.append('<span class="whisper"><b>' + data.nick + ': </b>' + data.msg + "</span><br/>");
+			});
+
+			$(window).unload(function(){
+				
+				Cookies.remove('name');
+			
+
+			});
+			
+
+		});
+	</script>
+</body>
+</html>
